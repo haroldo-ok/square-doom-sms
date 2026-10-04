@@ -1,0 +1,34 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap down
+run 10
+tap 1
+waituntil level_num == 1 600 w1
+run 100
+echo --- jump to E1M2 (clev), wait for a monster to hurt us at 1 hp
+poke level_num 2 w1
+poke clev 1 w1
+poke end_level 1 w1
+waituntil level_num == 2 600 w1
+run 400
+poke health 1 w1
+waituntil health == 0 6000 w1
+run 60
+screenshot shots/40_dead.ppm
+expect wpn_visible == 0 w1
+tap 2
+run 30
+tap 2
+waituntil health == 100 900 w1
+run 300
+screenshot shots/41_restart.ppm
+expect ammo == 50 w1
+expect owned_weapons == 2 w1

@@ -1,0 +1,107 @@
+symbols game.noi
+echo --- boot to E1M1 (skill: hurt me plenty)
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+waituntil level_num == 1 600 w1
+run 200
+expect health == 100 w1
+echo --- door: stand west of door sector 29, face east, use
+poke playerx 31744
+poke playery 9216
+poke playera 64 w1
+run 30
+expect {sec_ceil+29} == 4 w1
+tap 2
+run 150
+expect {sec_ceil+29} > 4 w1
+screenshot shots/30_door.ppm
+echo --- exit switch in sector 101: face west, use
+poke playerx 51712
+poke playery 50176
+poke playera 192 w1
+run 30
+hold 2
+run 20
+hold none
+waituntil end_level == 1 200 w1
+run 100
+screenshot shots/31_complete.ppm
+run 700
+screenshot shots/32_summary.ppm
+tap 1
+waituntil level_num == 2 300 w1
+run 400
+screenshot shots/33_e1m2.ppm
+expect health == 100 w1
+echo --- automap via pause
+pause
+run 30
+screenshot shots/34_map.ppm
+echo --- cheat: left right left right 1 1 2 = god mode
+tap left
+run 3
+tap right
+run 3
+tap left
+run 3
+tap right
+run 3
+tap 1
+run 3
+tap 1
+run 3
+tap 2
+run 10
+expect god_mode == 1 w1
+print health w1
+pause
+run 60
+echo --- weapon cycle (hold 2 + up) with idkfa: left right left right 2 2 1
+pause
+run 30
+tap left
+run 3
+tap right
+run 3
+tap left
+run 3
+tap right
+run 3
+tap 2
+run 3
+tap 2
+run 3
+tap 1
+run 10
+expect keys == 7 w1
+expect owned_weapons == 31 w1
+pause
+run 60
+hold 2+up
+run 4
+hold none
+run 120
+print cur_weapon w1
+screenshot shots/35_weapon.ppm
+hold 2+up
+run 4
+hold none
+run 120
+print cur_weapon w1
+screenshot shots/36_weapon.ppm
+hold 1
+run 60
+hold none
+run 60
+screenshot shots/37_fire.ppm
+echo --- death: god off, health 1, enemy damage sources
+poke god_mode 0 w1
+poke health 1 w1

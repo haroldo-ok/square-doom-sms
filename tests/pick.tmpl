@@ -1,0 +1,36 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+waituntil level_num == 1 600 w1
+run 150
+echo --- armor bonus at (8,7)
+poke playerx 17408
+poke playery 15360
+run 60
+expect armor == 1 w1
+expect num_items_got == 1 w1
+echo --- green armor at (2,9)
+poke playerx 5120
+poke playery 19456
+run 60
+expect armor == 100 w1
+print n_items w1
+echo --- barrel at (14,9): stand at (14,11) facing north and shoot
+poke playerx 29696
+poke playery 23552
+poke playera 0 w1
+run 60
+hold 1
+run 60
+hold none
+run 120
+print n_items w1
+screenshot shots/70_barrel.ppm

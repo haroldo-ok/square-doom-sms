@@ -1,0 +1,31 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+run 300
+print playerx
+print playery
+hold up
+run 180
+hold none
+print playerx
+print playery
+hold right
+run 120
+hold none
+print playera w1
+screenshot shots/20_moved.ppm
+hold 1
+run 60
+hold none
+print ammo w1
+screenshot shots/21_fire.ppm
+run 60
+print health w1

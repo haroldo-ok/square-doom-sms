@@ -1,0 +1,24 @@
+symbols game.noi
+run 120
+expectvdp display 1
+screenshot shots/00_splash.ppm
+expectcolors 6
+tap 1
+run 60
+screenshot shots/01_menu.ppm
+tap 1
+run 30
+screenshot shots/02_episode.ppm
+tap 1
+run 30
+tap down
+run 10
+tap 1
+run 120
+screenshot shots/03_entering.ppm
+run 200
+screenshot shots/04_game.ppm
+print health w1
+print level_num w1
+print playerx
+print playery

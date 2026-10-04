@@ -1,0 +1,39 @@
+symbols game.noi
+echo --- pad only: splash -> menu -> new game -> play -> map -> quit to title
+run 90
+expectvdp display 1
+expectcolors 8
+tap 1
+run 60
+expectcolors 4
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+waituntil game_frames > 2 900
+expect level_num == 1 w1
+expect health == 100 w1
+expect difficulty == 1 w1
+hold up
+run 120
+hold left
+run 60
+hold 2+right
+run 60
+hold 1
+run 60
+hold none
+run 60
+expect ammo < 50 w1
+expectcolors 8
+pause
+run 40
+hold 1+2
+run 120
+hold none
+run 120
+expectvdp display 1
+expect game_frames > 5
