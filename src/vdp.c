@@ -56,21 +56,9 @@ void load_game_tiles(void) {
   SMS_loadTiles((const void *)GAMETILES_ADDR, 0, 256 * 32);
   SMS_mapROMBank(b);
   SMS_loadBGPalette(game_bgpal);
-  SMS_loadSpritePalette(game_sprpal);
+  SMS_loadSpritePalette(game_sprpal_doom);
 }
 
-void load_weapon_tiles(u8 w) {
-  u8 b = SMS_getROMBank();
-  const u8 *t = wtile_tab + w * 4;
-  u16 addr = t[1] | (t[2] << 8);
-  u8 n = t[3];
-  SMS_mapROMBank(t[0]);
-  if (n > 128) {
-    SMS_loadTiles((const void *)addr, 256, 128 * 32);
-    SMS_loadTiles((const void *)(addr + 128 * 32), 440, (n - 128) * 32);
-  } else SMS_loadTiles((const void *)addr, 256, n * 32);
-  SMS_mapROMBank(b);
-}
 
 /* in-game font: yellow text (sprite palette half of pair 4) */
 u16 char_entry(char c) {
@@ -97,7 +85,7 @@ void vdp_init_game(void) {
   SMS_initSprites(); SMS_finalizeSprites(); SMS_copySpritestoSAT();
   nt_back = 1; vdp_flip();          /* front = 0x3000, back = 0x3800 */
   fb_clear();
-  wpn_tiles_loaded = 0xff;
+  { extern u8 wpn_shown_pose; wpn_shown_pose = 0xff; }
   last_playera = playera ^ 0x80;
   SMS_displayOn();
 }

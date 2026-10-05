@@ -1,7 +1,7 @@
 """Build the SMS ROM from SDCC's .ihx + generated data banks.
 banks 0-1 fixed code; 2 front-end code+data; 4-6 tiles/weapons; 7 splash;
 8-16 render banks (map + textures + tables); 17-25 logic banks (map + logic
-code linked at 0x8400); 26-27 level init data."""
+code linked at 0x8400 + level init data at the end)."""
 import sys, pickle
 ihx, mapf, pk, out = sys.argv[1:5]
 mem = {}
@@ -24,9 +24,12 @@ rom[0] = region(0, 0x4000); rom[1] = region(0x4000, 0x8000)
 rom[2] = region(0x28000, 0x2C000)
 logic = region(0x38400, 0x3C000)
 used_logic = max([a for a in mem if 0x38400 <= a < 0x3C000] or [0x38400]) - 0x38400 + 1
+init_addr = G['init_addr']
+assert 0x8400 + used_logic <= init_addr, 'logic code runs into the level init data'
 for n in range(9):
-    rom[17 + n] = bytearray(maps[n]) + logic
-rom[3] = bytearray(maps[0]) + logic
+    b = bytearray(maps[n]) + logic
+    b[init_addr - 0x8000:init_addr - 0x8000 + len(G['inits'][n])] = G['inits'][n]
+    rom[17 + n] = b
 for b, d in banks.items(): rom[b] = bytearray(d)
 nb = max(rom) + 1
 img = bytearray()

@@ -2,13 +2,16 @@
 
 A port of Steve McCrea's Commodore 64 **SquareDoom** (6502 assembly) to the
 Sega Master System, written in C + Z80 assembly with devkitSMS / SMSlib.
+The title screen, menus, logo, weapons and fonts are taken from id Software's
+**Doom 1.9 shareware** (`DOOM1.WAD`) so the presentation is closer to the
+original Doom.
 Everything in the C64 game is converted: all 9 maps (E1M9 is empty in the
 original data too), the sector raycaster, monsters, weapons, pickups, doors,
 lifts, stairs, switches, closets, secrets, damage floors, flashing lights,
 automap, cheats, title / menus / story / credits / ending pages, intermission
 tally, screen melt, the 18 PC-speaker sound effects and the `e1m1.sid` tune.
 
-`squaredoom.sms` — 512 KiB, Sega mapper, NTSC and PAL (auto-detected).
+`squaredoom.sms` — 512 KiB (31 banks), Sega mapper, NTSC and PAL (auto-detected).
 
 ## Controls (standard 2-button pad)
 
@@ -33,8 +36,9 @@ Menus: D-pad moves / adjusts volumes, 1 selects, 2 goes back.
 ## Building
 
 Needs SDCC + devkitSMS (`setup_toolchain.sh` from the skill), Python 3 with
-Pillow, numpy and py65, and the original C64 sources checked out next to this
-directory (`../SquareDoom`, or set `SQUAREDOOM_SRC`).
+Pillow, numpy and py65, the original C64 sources checked out next to this
+directory (`../SquareDoom`, or set `SQUAREDOOM_SRC`), and the Doom 1.9
+shareware `DOOM1.WAD` in `assets/` (or set `DOOM_WAD`).
 
     make            # converts all assets from the C64 sources, builds squaredoom.sms
     make playtest   # runs every headless smstest script in tests/
@@ -77,14 +81,40 @@ The build is reproducible (byte-identical ROM from a clean checkout).
   model, noise waveform → PSG noise, looped. The C64 build leaves music stubbed
   out; here it plays in game and in the menus (Music volume 0 turns it off).
 
+## Doom 1.9 presentation
+
+* **Title screen**: `TITLEPIC`, scaled to 256x192 and converted with both SMS
+  palettes (32 colours, chosen per tile) and similar-tile merging to fit 440 tiles.
+* **Menus**: Doom's `m_menu.c` layout with the original graphics — `M_DOOM`
+  logo, `M_NGAME`/`M_OPTION`/`M_RDTHIS`/`M_QUITG`, `M_EPISOD` + `M_EPI1-3`,
+  `M_NEWG`/`M_SKILL` + skill names, `M_SVOL` sound menu with `M_SFXVOL`/`M_MUSVOL`
+  and the `M_THERM*` sliders (the knob is a sprite), and the blinking `M_SKULL1/2`
+  cursor. "Controls" and "Credits" are set in Doom's menu font, harvested letter by
+  letter from the other menu graphics (`tools/doomfont.py`).
+* **Weapons**: Doom's psprites (`PUNG`, `SAWG`, `PISG`/`PISF`, `SHTG`/`SHTF`,
+  `CHGG`/`CHGF`, `MISG`/`MISF`) placed with Doom's full-screen offsets and
+  scaled 0.8 x 0.85. Fully opaque cells are background tiles, edge cells are
+  sprites (at most 8 per line). A pose's tiles are uploaded when the pose
+  changes, into whichever of two VRAM tile banks the visible frame is not using.
+* **Fonts**: in-game messages and HUD numbers use Doom's `STCFN` message font
+  (red shades); keys use `STKEYS`; the story/credits/ending/controls pages use
+  `STCFN` too. The intermission uses the `WI*` graphics (level names `WILV0x`,
+  "Entering", "Finished", Kills / Items / Secret / Time / Par, `WINUM` digits).
+* **Wall lighting**: walls darken with distance in every sector (about one
+  dither step per 0.8 tiles on top of the sector light level, levelling off
+  just before black), like Doom's diminishing light. The C64 version skipped
+  distance shading for full-bright sectors.
+
 ## Differences from the C64 version
 
 * 32-column view instead of 40 (see above); messages longer than 32
   characters wrap to a second line.
 * Keyboard controls mapped to the pad; cheats are pad codes on the automap.
 * No mouse option (no SMS equivalent); *Quit* returns to the title screen.
-* Menu and story text use the menu font at a fixed width instead of the
-  C64's proportional bitmap text; pages are reflowed to 30 columns.
+* Menus have no "Back" entries (as in Doom); button 2 goes back.
+* Title, menus, weapons, fonts and intermission graphics come from Doom 1.9
+  (see above) instead of the C64 art; text pages are reflowed to 30 columns in
+  a fixed-width layout of Doom's STCFN font.
 * Speed: about 3–4.5 frames per second depending on the view (the C64 runs at
   a similar handful of frames per second).
 
@@ -94,4 +124,5 @@ The build is reproducible (byte-identical ROM from a clean checkout).
 automap → quit), `fixtures` (door, exit switch → tally → E1M2, cheats, weapon
 cycling), `death` (killed by a monster, restart), `pick` (pickups, barrel
 explosion), `sky`, `menus` (options, controls, story, credits, quit), `ending`
-(finish E1M8 → ending pages → menu), `l2` (level 2 load).
+(finish E1M8 → ending pages → menu), `l2` (level 2 load), `weapons` (every
+weapon idle and firing, rocket ammo spent).

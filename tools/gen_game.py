@@ -2,7 +2,7 @@
 import sys, math, re
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 from common import *
-import acme, weapons as W
+import acme
 
 fixed_c = ['#include "fixed.h"\n']
 fixed_h = ['#ifndef FIXED_H\n#define FIXED_H\n']
@@ -54,6 +54,9 @@ arr('rtab1', r1); arr('rtab2', r2)
 arr('rset_off', offs, 'unsigned int'); arr('rset_len', lens); arr('rset_data', data)
 print('row sets', len(set_list), 'bytes', len(data))
 arr('qsq', [(i * i) // 4 for i in range(512)], 'unsigned int')
+# wall distance lighting: dither steps added for a wall P (8.8 tiles) away, index P>>4.
+# Roughly linear like Doom's diminishing light, levelling off before full black.
+arr('lightfall', [min(13, round((i / 16) * 1.25)) for i in range(256)])
 COL_ANGLE = (2 * HALF_FOV / COLS) * (2 * math.pi / 256)
 spr = []
 for i in range(256):
@@ -87,29 +90,52 @@ for k in range(1, 7):
 tiles.append(tile_from_1bpp([255] * 8, 7)); tiles.append(tile_from_1bpp([255] * 8, 8))
 assert len(tiles) == 189
 FONT0 = len(tiles)
-for i in range(26): tiles.append(tile_from_1bpp(glyph(64 + i), 4))          # A-Z
-for i in range(10): tiles.append(tile_from_1bpp(glyph(48 + i), 4))          # 0-9 yellow/blue
+# In-game text: Doom's STCFN message font, red shades from the sprite palette
+import wad, doomweap as DWF
+def red_idx(rgb):
+    lv = max(rgb)
+    return 12 if lv >= 200 else 15 if (lv >= 160 and rgb[1] > 40) else 3 if lv >= 110 else 10
+def stcfn_tile(ch):
+    w, h, lo, to, px = wad.patch('STCFN%03d' % ord(ch))
+    img = {}
+    ox = max(0, (7 - w) // 2)          # centre the proportional glyph in its cell
+    for (x, y), v in px.items():
+        X, Y = x + ox, y - to
+        if 0 <= X < 8 and 0 <= Y < 8: img[(X, Y)] = red_idx(wad.PAL[v])
+    return DWF.tile_bytes(img)
+def sprite_tile(name, ox=0, oy=0):
+    w, h, lo, to, px = wad.patch(name)
+    img = {}
+    for (x, y), v in px.items():
+        c = DWF.sms_of(wad.PAL[v])
+        k = min(DWF.SPRPAL, key=lambda i: sum((a - b) ** 2 for a, b in zip(DWF.SPRPAL[i], c)))
+        img[(x + ox, y + oy)] = k
+    return DWF.tile_bytes(img)
+def icon(g, col):
+    return DWF.tile_bytes({(x, y): col for y in range(8) for x in range(8) if glyph(g)[y] & (0x80 >> x)})
+for i in range(26): tiles.append(stcfn_tile(chr(65 + i)))                  # A-Z
+for i in range(10): tiles.append(stcfn_tile(chr(48 + i)))                  # 0-9
 PUNCT = '.,!\':-%?'
-for ch in PUNCT: tiles.append(tile_from_1bpp(glyph(ord(ch)), 4))
-for i in range(10): tiles.append(tile_from_1bpp(glyph(48 + i), 3))          # 0-9 red/green
-for g in (38, 31, 34, 60): tiles.append(tile_from_1bpp(glyph(g), 7))        # ammo icons cyan
-tiles.append(tile_from_1bpp(glyph(47), 5))                                  # health white
-tiles.append(tile_from_1bpp(glyph(30), 3)); tiles.append(tile_from_1bpp(glyph(30), 4))
-tiles.append(tile_from_1bpp(glyph(59), 3)); tiles.append(tile_from_1bpp(glyph(59), 4))
-for i in range(4): tiles.append(tile_from_1bpp(glyph(17 + i), 5))           # map arrows
-assert len(tiles) == 256, len(tiles)
+for ch in PUNCT: tiles.append(stcfn_tile(ch))
+for g in (38, 31, 34, 60): tiles.append(icon(g, 4))                        # ammo icons (yellow)
+tiles.append(icon(47, 5))                                                  # health (white)
+tiles.append(icon(30, 2))                                                  # armor (grey)
+for k in (2, 1, 0): tiles.append(sprite_tile('STKEYS%d' % k, 0, 1))         # red, yellow, blue keycards
+for i in range(4): tiles.append(icon(17 + i, 5))                           # map arrows (white)
+while len(tiles) < 256: tiles.append(bytes(32))
 H('#define T_FONT_AZ %d' % FONT0)
-H('#define T_FONT_09Y %d' % (FONT0 + 26))
+H('#define T_FONT_09 %d' % (FONT0 + 26))
+H('#define T_FONT_09Y T_FONT_09')
+H('#define T_FONT_09R T_FONT_09')
 H('#define T_FONT_PUNCT %d' % (FONT0 + 36))
 H('#define FONT_PUNCT_CHARS "%s"' % PUNCT.replace('\\', '\\\\').replace('"', '\\"'))
-H('#define T_FONT_09R %d' % (FONT0 + 44))
-H('#define T_AMMOICON %d' % (FONT0 + 54))
-H('#define T_HEALTHICON %d' % (FONT0 + 58))
-H('#define T_ARMORICON_G %d' % (FONT0 + 59))
-H('#define T_ARMORICON_B %d' % (FONT0 + 60))
-H('#define T_KEY_K3 %d' % (FONT0 + 61))
-H('#define T_KEY_K4 %d' % (FONT0 + 62))
-H('#define T_ARROW %d' % (FONT0 + 63))
+H('#define T_AMMOICON %d' % (FONT0 + 44))
+H('#define T_HEALTHICON %d' % (FONT0 + 48))
+H('#define T_ARMORICON %d' % (FONT0 + 49))
+H('#define T_KEY_RED %d' % (FONT0 + 50))
+H('#define T_KEY_YELLOW %d' % (FONT0 + 51))
+H('#define T_KEY_BLUE %d' % (FONT0 + 52))
+H('#define T_ARROW %d' % (FONT0 + 53))
 # colour -> fb entry tables
 def entry(k, s, p, kind):
     if k > 6 and kind != 'solid':  # fall back to nearest dithered colour
@@ -130,59 +156,46 @@ arr('wall_entry', wallb, 'unsigned int'); arr('floor_entry', floorb, 'unsigned i
 arr('solid_entry', solid, 'unsigned int')
 
 # ------------------------------------------------------------------ banks
-BANK_FRONT, BANK_LOGIC_T, BANK_WPN0, BANK_SPLASH, BANK_RENDER0, BANK_LOGIC0, BANK_INIT0 = 2, 3, 4, 7, 8, 17, 26
+BANK_FRONT, BANK_LOGIC_T, BANK_WPN0, BANK_SPLASH, BANK_RENDER0, BANK_LOGIC0, BANK_INIT0 = 2, 3, 3, 7, 8, 17, 17
 for k, v in (('BANK_FRONT', BANK_FRONT), ('BANK_WPN0', BANK_WPN0), ('BANK_SPLASH', BANK_SPLASH),
              ('BANK_RENDER0', BANK_RENDER0), ('BANK_LOGIC0', BANK_LOGIC0), ('BANK_INIT0', BANK_INIT0)):
     H('#define %s %d' % (k, v))
 H('#define LOGIC_CODE_ADDR 0x8400')
 # weapon banks: game tileset + weapon tiles + pose data
-wb = {BANK_WPN0 + i: bytearray() for i in range(3)}
+wb = {BANK_WPN0 + i: bytearray() for i in range(4)}
 def wadd(name, data):
     b = next(b for b in sorted(wb) if len(wb[b]) + len(data) <= 16384)
     off = len(wb[b]); wb[b] += data
     H('#define %s_BANK %d' % (name, b)); H('#define %s_ADDR 0x%04X' % (name, 0x8000 + off))
     return b, 0x8000 + off
 wadd('GAMETILES', b''.join(tiles))
-wtile_tab = []; wpose_ptrs = []; posedata = []; WPOSE_N = []
-for wi, (name, poses) in enumerate(W.WEAPONS):
-    if name == 'pistol':
-        tl = []; idx = {}
-        def tid(b):
-            if b not in idx: idx[b] = len(tl); tl.append(b)
-            return idx[b]
-        variants = {}
-        for fl in (None, 'a', 'b'):
-            img = W.compose_full(W.pistol(0, fl))
-            xs = [x for x, y in img]; ys = [y for x, y in img]; x0, y0 = min(xs) & ~7, min(ys)
-            cells = {}
-            for (x, y), c in img.items():
-                cells.setdefault(((x - x0) // 8, (y - y0) // 8), {})[((x - x0) % 8, (y - y0) % 8)] = W.SPAL[c]
-            variants[fl] = [(x0 + cx * 8, y0 + cy * 8, tid(W.tile_bytes(px))) for (cx, cy), px in sorted(cells.items())]
-        out = []
-        for fl, off in ((None, 0), ('a', -4), ('b', -4), (None, -6)):
-            out.append(([], [(x, y + off, t) for x, y, t in variants[fl] if -8 < y + off < 192]))
-        tiles_w = tl
-    else:
-        tiles_w, out = W.build_weapon(poses)
-    assert len(tiles_w) <= 136, (name, len(tiles_w))
-    b, a = wadd('WTILES%d' % wi, b''.join(tiles_w))
-    wtile_tab += [b, a & 255, a >> 8, len(tiles_w)]
-    WPOSE_N.append(len(out))
-    for bgl, spl in out:
-        assert len(spl) <= 64
-        rec = [len(bgl), len(spl)]
-        for cx, cy, t in bgl:
-            cell = cy * 32 + cx
-            rec += [cell & 255, cell >> 8, t]
-        for x, y, t in spl:
-            rec += [x & 255, y & 255, t if t < 128 else 184 + (t - 128)]
-        wpose_ptrs.append(len(posedata)); posedata += rec
-b, a = wadd('WPOSE', bytes(posedata))
-arr('wtile_tab', wtile_tab)
-arr('wpose_off', wpose_ptrs, 'unsigned int')
+import doomweap as DW
+# Doom weapon poses. Each pose record: ntiles, nbg, nspr, then nbg x (cell lo, cell hi, tile),
+# nspr x (x, y, tile), then the tile data. Tiles are bank-local 0..67 (runtime maps
+# them to one of two VRAM tile banks so the shown frame never sees a half-loaded pose).
+wpose_bank = []; wpose_addr = []; WPOSE_N = []
+for wi, (name, poses) in enumerate(DW.WEAPONS):
+    recs = []
+    for spr_name, flashes in poses:
+        tiles_p, bgl, spl = DW.build_pose(DW.compose(spr_name, flashes))
+        rec = [len(tiles_p), len(bgl), len(spl)]
+        for cell, t in bgl: rec += [cell & 255, cell >> 8, t]
+        for x, y, t in spl: rec += [x & 255, (y - 1) & 255, t]
+        recs.append(bytes(rec) + b''.join(tiles_p))
+    blob_total = sum(len(r) for r in recs)
+    # keep a weapon's poses in one bank
+    bnk = next(b for b in sorted(wb) if len(wb[b]) + blob_total <= 16384)
+    for r in recs:
+        wpose_bank.append(bnk); wpose_addr.append(0x8000 + len(wb[bnk])); wb[bnk] += r
+    WPOSE_N.append(len(poses))
+    print('weapon', name, 'bytes', blob_total)
+arr('wpose_bank', wpose_bank)
+arr('wpose_addr', wpose_addr, 'unsigned int')
 pf = [0]
 for n in WPOSE_N: pf.append(pf[-1] + n)
 arr('wpose_first', pf)
+H('#define WPOSE_BANK_TILES %d' % DW.BANK_TILES)
+arr('game_sprpal_doom', [r | (g << 2) | (b << 4) for r, g, b in [DW.SPRPAL.get(i, (0, 0, 0)) for i in range(16)]])
 banks.update(wb)
 print('weapon banks', [len(v) for v in wb.values()])
 
@@ -218,16 +231,13 @@ assert len(tex) <= 16384
 levels = [open(SRC + 'levels/e1m%d.bin' % n, 'rb').read() for n in range(1, 10)]
 for n in range(9):
     banks[BANK_RENDER0 + n] = bytes(levels[n][:1024]) + bytes(tex[1024:])
-# level init data (everything after the map), 6 per bank
+# level init data (everything after the map) lives at the end of each logic bank
 INIT_SZ = 3473 - 1024
-for n in range(9):
-    b = BANK_INIT0 + n // 6
-    banks.setdefault(b, bytearray())
-    banks[b] = bytes(banks[b]) + levels[n][1024:]
+INIT_ADDR = 0xC000 - INIT_SZ
 H('#define LEVEL_INIT_SIZE %d' % INIT_SZ)
-H('#define LEVELS_PER_INIT_BANK 6')
+H('#define LEVEL_INIT_ADDR 0x%04X' % INIT_ADDR)
 import pickle
-pickle.dump({'banks': banks, 'maps': [l[:1024] for l in levels]}, open(GEN + 'banks_game.pkl', 'wb'))
+pickle.dump({'banks': banks, 'maps': [l[:1024] for l in levels], 'inits': [l[1024:] for l in levels], 'init_addr': INIT_ADDR}, open(GEN + 'banks_game.pkl', 'wb'))
 H('#endif')
 open(GEN + 'fixed.c', 'w').write(''.join(fixed_c))
 open(GEN + 'fixed.h', 'w').write(''.join(fixed_h))

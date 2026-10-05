@@ -142,34 +142,48 @@ static u8 pose_index(void) {
   }
 }
 
-/* highlight colour (sprite palette entry 12) */
-u8 weapon_hl_colour(void) {
-  u8 b;
-  if (wpn_flash_ticks && cur_weapon >= 2) return muzzle_hi_col;
-  b = sec_bright[player_sector]; if (b > 16) b = 16;
-  return bright_to_wpn_hi[b];
-}
+/* Doom weapons have no C64 highlight layer: the old HL entry is a normal colour */
+u8 weapon_hl_colour(void) { return 0; }
 
-/* stamp interior BG tiles into fb + build the sprite table (sat_*) */
+/* stamp interior BG tiles into fb + build the sprite table (sat_*).
+ * Pose tiles live in one of two VRAM banks (68 tiles each); a new pose is loaded
+ * into the bank the visible frame is not using. */
 u8 sat_n, sat_y[64], sat_xn[128];
+u8 wpn_shown_pose = 0xff, wpn_shown_bank;
+static u8 next_bank;
+static u16 vram_tile(u8 bank, u8 t) {
+  if (!bank) return 256 + t;
+  return t < 60 ? 324 + t : 440 + (t - 60);
+}
 void weapon_overlay(void) {
   const u8 *d;
-  u8 nb, ns, bank = SMS_getROMBank();
+  u8 nt, nb, ns, bank = SMS_getROMBank(), p, vb;
   sat_n = 0;
-  if (!(wpn_visible && health && cur_weapon == wpn_tiles_loaded)) return;
-  SMS_mapROMBank(WPOSE_BANK);
-  d = (const u8 *)WPOSE_ADDR + wpose_off[wpose_first[cur_weapon] + pose_index()];
-  nb = d[0]; ns = d[1]; d += 2;
+  if (!(wpn_visible && health && cur_weapon <= 5)) return;
+  p = wpose_first[cur_weapon] + pose_index();
+  SMS_mapROMBank(wpose_bank[p]);
+  d = (const u8 *)wpose_addr[p];
+  nt = d[0]; nb = d[1]; ns = d[2];
+  if (p != wpn_shown_pose) {
+    const u8 *t = d + 3 + nb * 3 + ns * 3;
+    vb = wpn_shown_bank ^ 1;
+    if (!vb) SMS_loadTiles(t, 256, nt * 32);
+    else if (nt <= 60) SMS_loadTiles(t, 324, nt * 32);
+    else { SMS_loadTiles(t, 324, 60 * 32); SMS_loadTiles(t + 60 * 32, 440, (nt - 60) * 32); }
+  } else vb = wpn_shown_bank;
+  next_bank = vb;
+  d += 3;
   while (nb--) {
     u16 cell = d[0] | (d[1] << 8);
-    u8 t = d[2];
-    fb[cell] = (t < 128 ? 256 + t : 440 + t - 128) | TILE_USE_SPRITE_PALETTE;
+    fb[cell] = vram_tile(vb, d[2]) | TILE_USE_SPRITE_PALETTE;
     d += 3;
   }
   {
     u8 *py = sat_y, *pxn = sat_xn;
     sat_n = ns;
-    while (ns--) { *pxn++ = d[0]; *py++ = d[1] - 1; *pxn++ = d[2]; d += 3; }
+    while (ns--) { *pxn++ = d[0]; *py++ = d[1]; *pxn++ = (u8)(vram_tile(vb, d[2]) - 256); d += 3; }
   }
   SMS_mapROMBank(bank);
+  wpn_shown_pose = p;     /* committed when this frame is presented */
+  wpn_shown_bank = vb;
 }

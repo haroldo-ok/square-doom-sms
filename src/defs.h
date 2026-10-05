@@ -180,6 +180,11 @@ void forever_adopt_nb(u8 s);
 void floor_forever_activate(void);
 void boss_lower_forever_floors(void);
 void show_splash(void);
+#define IMG_PAL 1
+#define IMG_SPRPAL 2
+#define IMG_NOMAP 4
+void img_load_ba(u8 bank, u16 addr, u16 tbase, u8 x, u8 y, u8 flags);
+u16 img_load(u8 id, u16 tbase, u8 x, u8 y, u8 flags);
 void update_eye(void);
 s8 item_find(u8 tx, u8 ty);
 void item_remove(u8 i);

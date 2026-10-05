@@ -9,6 +9,7 @@
         .globl _ytop, _ybot, _col, _cn, _clip_n, _clip_top, _clip_bot, _clip_z
         .globl _sec_bright, _sec_wdark, _sec_ceil, _sec_floor, _sec_ccol, _sec_fcol, _sec_type
         .globl _sec_seen, _sec_visited, _seen_gen, _sw_n
+        .globl _lightfall
         .globl _wall_entry, _floor_entry, _rtab1, _rtab2, _rset_off, _rset_len, _rset_data
         .globl _dda_run, _fill_span, _sky_fill, _switch_face, _paint_switch, _door_colour
         CLIP_MAX = 8
@@ -328,23 +329,37 @@ _cast_rest:
         ld hl,#_rset_data
         add hl,de
         ld (oc_rowp),hl
-114$:   ;; wall pattern = wdark + min(15, P>>8), 0xff = full bright
+;; wall pattern = sector darkness + distance falloff (lightfall[P>>4]),
+        ;; applied to every sector, full-bright ones included
+114$:   ld hl,(_g_P)
+        ld a,h
+        cp a,#16
+        ld a,#255
+        jr nc,1141$
+        ld a,l
+        srl h
+        rra
+        srl h
+        rra
+        srl h
+        rra
+        srl h
+        rra
+1141$:  ld e,a
+        ld d,#0
+        ld hl,#_lightfall
+        add hl,de
+        ld b,(hl)               ; b = distance falloff
         ld a,(_g_cur)
         ld e,a
-        ld d,#0
         ld hl,#_sec_wdark
         add hl,de
         ld a,(hl)
         inc a
         jr nz,115$
-        xor a,a
-        jr 117$
+        xor a,a                 ; full bright: no sector darkness
+        jr 116$
 115$:   dec a
-        ld b,a
-        ld a,(_g_P+1)
-        cp a,#15
-        jr c,116$
-        ld a,#15
 116$:   add a,b
         cp a,#15
         jr c,117$

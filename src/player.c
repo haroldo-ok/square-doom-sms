@@ -216,7 +216,7 @@ void damage_player(u8 dmg) {
   else if (difficulty == 2) { u16 v = dmg + (dmg >> 1); dmg = v > 255 ? 255 : (u8)v; }
   play_sound(SND_OOF);
   hurt_flash = 1;
-  set_border(3);
+  set_border(2);
   if (armor) {
     u8 saved = combat_armor ? (dmg >> 1) : (dmg >> 2) + (dmg >> 4);
     if (saved) {
@@ -231,14 +231,14 @@ void damage_player(u8 dmg) {
 
 void player_frame(void) {
   if (radsuit_ms) radsuit_ms = radsuit_ms > dt_ms ? radsuit_ms - dt_ms : 0;
-  if (hurt_flash) { hurt_flash--; set_border(3); return; }
+  if (hurt_flash) { hurt_flash--; set_border(2); return; }
   if (!radsuit_ms) set_border(0);
-  else if (radsuit_ms >= 5000 || ((radsuit_ms >> 8) & 2)) set_border(13);
+  else if (radsuit_ms >= 5000 || ((radsuit_ms >> 8) & 2)) set_border(5);
   else set_border(0);
 }
 
 void player_death_frame(void) {
-  set_border(3);
+  set_border(2);
   if (!key_use) { key_use_was = 0; return; }
   if (key_use_was) return;
   key_use_was = 1;
@@ -269,15 +269,15 @@ static void hud_num(u16 *d, u8 v, u16 base, u16 flag) {
 }
 void draw_hud(void) {
   u16 *r = fb + HUD_ROW * VIEW_W;
-  r[0] = cur_weapon >= 2 ? T_AMMOICON + cur_weapon - 2 : 0;
-  hud_num(r + 1, ammo[wpn_ammo_idx[cur_weapon]], T_FONT_09R, TILE_USE_SPRITE_PALETTE);
+  r[0] = cur_weapon >= 2 ? (T_AMMOICON + cur_weapon - 2) | TILE_USE_SPRITE_PALETTE : 0;
+  hud_num(r + 1, ammo[wpn_ammo_idx[cur_weapon]], T_FONT_09, TILE_USE_SPRITE_PALETTE);
   r[4] = T_HEALTHICON | TILE_USE_SPRITE_PALETTE;
-  hud_num(r + 5, health, T_FONT_09R, TILE_USE_SPRITE_PALETTE);
-  if (armor > 100) { r[24] = T_ARMORICON_B; hud_num(r + 25, armor, T_FONT_09Y, 0); }
-  else { r[24] = T_ARMORICON_G; hud_num(r + 25, armor, T_FONT_09R, 0); }
+  hud_num(r + 5, health, T_FONT_09, TILE_USE_SPRITE_PALETTE);
+  r[24] = T_ARMORICON | TILE_USE_SPRITE_PALETTE;
+  hud_num(r + 25, armor, T_FONT_09, TILE_USE_SPRITE_PALETTE);
   r[28] = 0;
-  r[29] = (keys & 1) ? T_KEY_K3 | TILE_USE_SPRITE_PALETTE : 0;
-  r[30] = (keys & 2) ? T_KEY_K4 | TILE_USE_SPRITE_PALETTE : 0;
-  r[31] = (keys & 4) ? T_KEY_K4 : 0;
+  r[29] = (keys & 1) ? T_KEY_RED | TILE_USE_SPRITE_PALETTE : 0;
+  r[30] = (keys & 2) ? T_KEY_YELLOW | TILE_USE_SPRITE_PALETTE : 0;
+  r[31] = (keys & 4) ? T_KEY_BLUE | TILE_USE_SPRITE_PALETTE : 0;
   hud_dirty = 0;
 }

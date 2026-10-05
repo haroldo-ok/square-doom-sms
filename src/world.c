@@ -44,9 +44,9 @@ void load_level(void) {
   static const u8 chase[4] = {0, 4, 9, 13};
   const u8 *base, *s, *l;
   u16 i;
-  u8 n = level_num - 1, bank = SMS_getROMBank();
-  SMS_mapROMBank(BANK_INIT0 + n / LEVELS_PER_INIT_BANK);
-  base = (const u8 *)0x8000 + (u16)(n % LEVELS_PER_INIT_BANK) * LEVEL_INIT_SIZE;
+  u8 bank = SMS_getROMBank();
+  SMS_mapROMBank(LOGIC_BANK);
+  base = (const u8 *)LEVEL_INIT_ADDR;
   l = base; s = base + 1024;
   for (i = 0; i < SEC_N; i++) {
     sec_floor[i] = s[i]; sec_ceil[i] = s[200 + i]; sec_type[i] = s[400 + i]; sec_target[i] = s[600 + i];

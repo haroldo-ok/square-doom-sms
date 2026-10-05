@@ -61,8 +61,8 @@ void present_frame(u8 with_sprites) {
   SMS_waitForVBlank();
   vdp_flip();
   if (with_sprites) vdp_upload_sat();
-  SMS_setSpritePaletteColor(12, c64_sms[weapon_hl_colour()]);
-  SMS_setBackdropColor(border_idx);
+  SMS_setSpritePaletteColor(14, c64_sms[border_idx]);
+  SMS_setBackdropColor(14);
 }
 
 static void detect_region(void) {
@@ -105,16 +105,8 @@ static void game_frame(void) {
   render_world();
   draw_info_msg();
   draw_hud();
-  if (wpn_tiles_loaded != cur_weapon && health) {
-    /* present a frame without the weapon, then swap its tiles in */
-    { extern u8 sat_n; sat_n = 0; }
-    present_frame(1);
-    load_weapon_tiles(cur_weapon);
-    wpn_tiles_loaded = cur_weapon;
-  } else {
-    weapon_overlay();
-    present_frame(1);
-  }
+  weapon_overlay();
+  present_frame(1);
   SMS_mapROMBank(LOGIC_BANK);
   if (health) { update_muzzle_flash(); hitscan_process(); }
   enemy_think();
