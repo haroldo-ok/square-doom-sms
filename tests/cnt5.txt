@@ -1,0 +1,18 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap 1
+waituntil level_num == 1 600 w1
+run 300
+print game_frames
+print dbg_cross
+print dbg_dda
+run 600
+print game_frames
+print dbg_cross
+print dbg_dda

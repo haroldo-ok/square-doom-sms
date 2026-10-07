@@ -17,6 +17,9 @@ for line in open(ihx):
 def region(lo, hi):
     return bytearray(mem.get(a, 0) for a in range(lo, hi))
 assert max(a for a in mem if a < 0x10000) < 0x8000, 'fixed code overflows 32 KiB'
+import re as _re
+_noi = {l.split()[1]: int(l.split()[2], 16) for l in open(mapf.replace('.map', '.noi')) if l.startswith('DEF ')}
+assert _noi['s__DATA'] + _noi['l__DATA'] + _noi.get('l__INITIALIZED', 0) <= 0xD900, 'RAM data runs into the clip pages at 0xD900'
 G = pickle.load(open(pk, 'rb'))
 banks = dict(G['banks']); maps = G['maps']
 rom = {}

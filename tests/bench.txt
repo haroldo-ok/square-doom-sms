@@ -1,0 +1,3 @@
+symbols game.noi
+run 60
+print br0

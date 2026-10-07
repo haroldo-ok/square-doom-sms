@@ -23,7 +23,7 @@ front.rel: src/front.c $(HDRS)
 	$(CC) $(CFLAGS) --codeseg BANK2 --constseg BANK2 -c $< -o $@
 menu_assets.rel: gen/menu_assets.c gen/menu_data.h
 	$(CC) $(CFLAGS) --codeseg BANK2 --constseg BANK2 -c $< -o $@
-cast.rel: src/cast.s
+cast.rel: src/cast.s gen/fixed.h
 	sdasz80 -plosgff -o cast.rel src/cast.s
 front_tab.rel: gen/front_tab.c gen/menu_data.h
 	$(CC) $(CFLAGS) -c $< -o $@

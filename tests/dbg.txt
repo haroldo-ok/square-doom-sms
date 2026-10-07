@@ -1,0 +1,55 @@
+symbols game.noi
+echo --- boot to E1M1 (skill: hurt me plenty)
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+waituntil level_num == 1 600 w1
+run 200
+expect health == 100 w1
+echo --- door: stand west of door sector 29, face east, use
+poke playerx 31744
+poke playery 9216
+poke playera 64 w1
+run 30
+tap 2
+run 120
+screenshot shots/30_door.ppm
+echo --- exit switch in sector 101: face west, use
+poke playerx 51712
+poke playery 50176
+poke playera 192 w1
+run 30
+hold 2
+run 20
+hold none
+waituntil end_level == 1 200 w1
+screenshot shots/31_complete.ppm
+run 400
+screenshot shots/32_summary.ppm
+run 300
+tap 1
+run 20
+print level_num w1
+screenshot shots/dbg_0.ppm
+print end_level w1
+run 60
+print level_num w1
+screenshot shots/dbg_1.ppm
+print end_level w1
+expectvdp display 1
+run 60
+print level_num w1
+screenshot shots/dbg_2.ppm
+print game_frames
+expectvdp display 1
+run 200
+print level_num w1
+screenshot shots/dbg_3.ppm
+print game_frames

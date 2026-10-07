@@ -1,0 +1,17 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap 1
+waituntil level_num == 1 600 w1
+run 400
+print frame_vbl
+run 300
+print frame_vbl
+hold up
+run 200
+print frame_vbl

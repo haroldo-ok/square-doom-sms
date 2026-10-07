@@ -1,0 +1,77 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+echo --- options: lower effects volume twice, music volume up once
+tap down
+run 10
+tap 1
+run 30
+screenshot shots/50_options.ppm
+tap left
+run 10
+tap left
+run 10
+expect effects_vol == 13 w1
+tap down
+run 10
+tap right
+run 10
+expect music_vol == 11 w1
+screenshot shots/51_options2.ppm
+tap 2
+run 30
+echo --- controls page
+tap down
+run 10
+tap 1
+run 60
+screenshot shots/52_controls.ppm
+expectcolors 2
+tap 1
+run 60
+echo --- read this (story pages)
+tap down
+run 10
+tap 1
+run 60
+screenshot shots/53_readthis.ppm
+expectcolors 2
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 60
+echo --- credits (4 pages)
+tap down
+run 10
+tap 1
+run 60
+screenshot shots/54_credits.ppm
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 40
+tap 1
+run 60
+echo --- quit -> title splash
+tap down
+run 10
+tap 1
+run 60
+screenshot shots/55_quit.ppm
+expectvdp display 1
+expectcolors 8

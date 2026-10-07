@@ -1,0 +1,24 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+run 300
+print game_frames
+run 600
+print game_frames
+print vbl_count
+screenshot shots/05_game.ppm
+hold up 120
+print game_frames
+print playerx
+print playery
+screenshot shots/06_moved.ppm
+hold right 60
+screenshot shots/07_turn.ppm

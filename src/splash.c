@@ -12,6 +12,7 @@ static void wait_button(void) {
   }
 }
 void show_splash(void) {
+  vdp_sync();
   SMS_displayOff();
   vdp_set_nt_front();
   SMS_initSprites(); SMS_finalizeSprites(); SMS_copySpritestoSAT();

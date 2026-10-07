@@ -1,0 +1,24 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap 1
+waituntil level_num == 1 600 w1
+run 200
+print game_frames
+hold up
+run 300
+hold right
+run 150
+hold up
+run 300
+hold left
+run 300
+hold up+right
+run 300
+hold none
+print game_frames

@@ -11,7 +11,7 @@ lifts, stairs, switches, closets, secrets, damage floors, flashing lights,
 automap, cheats, title / menus / story / credits / ending pages, intermission
 tally, screen melt, the 18 PC-speaker sound effects and the `e1m1.sid` tune.
 
-`squaredoom.sms` — 512 KiB (31 banks), Sega mapper, NTSC and PAL (auto-detected).
+`squaredoom.sms` — 1 MiB (53 banks), Sega mapper, NTSC and PAL (auto-detected).
 
 ## Controls (standard 2-button pad)
 
@@ -72,9 +72,38 @@ The build is reproducible (byte-identical ROM from a clean checkout).
   doors/lifts/stairs processes, triggers, pickups, damage and armour rules,
   timings in ms) is a line-by-line port of the 6502 routines.
 * **Banking.** Fixed code in banks 0–1; front end (menus, text, tally) in a
-  code bank; per level a *render bank* (map at 0x8000 + textures + tables) and
-  a *logic bank* (the same map at 0x8000 + enemy/level code), so map reads
-  work whichever is paged in.
+  code bank; per level a *cast bank* (map + per-crossing table + a full
+  projection table + sky/switch textures), a *render bank* (map + sprite
+  textures) and a *logic bank* (map + enemy/level code + the level's start-up
+  data). The map sits at 0x8000 in all three, so map reads work whichever is
+  paged in. Two *ray banks* hold the 32 columns' DDA steps for every view angle.
+
+## Speed
+
+Measured with `tools/fps.sh` (E1M1 start view, the heaviest) and
+`tools/fps_walk.sh` (a scripted walk through E1M1), NTSC:
+
+| | start view | walk |
+|---|---|---|
+| first complete build | 18.0 vblanks/frame (3.3 fps) | — |
+| this version | 12.8 (4.7 fps) | 6.9 (8.7 fps) |
+
+What made the difference:
+* **Column caster in Z80** (`src/cast.s`): register-resident DDA (`dda_run`), one
+  pass per sector crossing with ytop/ybot in registers, page-aligned clip
+  stacks, cached sector heights.
+* **Big-ROM tables**: a per-level projection table gives the screen row of any
+  height difference at any distance in one indexed load (no multiplies);
+  per-crossing info (row table, wall light falloff, clip depth) comes from one
+  4-byte record; the ray banks replace 64 multiplies whenever the view turns.
+* **Deferred flip**: the frame is queued and the frame interrupt swaps the
+  name table, sprite table and border colour, so the next frame starts
+  computing immediately instead of waiting for VBlank.
+* **Sprites**: things are only projected when their sector was reached by a
+  ray this frame (as Doom renders things in visible subsectors), early
+  field-of-view rejection, reciprocal tables instead of divisions, and the
+  column/texel loop in Z80.
+* Weapon overlay records precomputed per VRAM tile bank and copied in Z80.
 * **Sound.** PC-speaker effects (VicDoom lumps) play on PSG tone 2, resampled
   to 60 Hz. The SID tune was converted by running its 6502 player (py65) and
   capturing the register writes: voices 1–2 → PSG tones 0–1 with an ADSR
@@ -115,8 +144,8 @@ The build is reproducible (byte-identical ROM from a clean checkout).
 * Title, menus, weapons, fonts and intermission graphics come from Doom 1.9
   (see above) instead of the C64 art; text pages are reflowed to 30 columns in
   a fixed-width layout of Doom's STCFN font.
-* Speed: about 3–4.5 frames per second depending on the view (the C64 runs at
-  a similar handful of frames per second).
+* Speed: about 8.7 frames per second on average while walking through E1M1
+  (NTSC; 6.9 TV frames per redraw), 4.7 fps at the heaviest view (the E1M1 start).
 
 ## Tests (`tests/*.tmpl`, run with `make playtest`)
 

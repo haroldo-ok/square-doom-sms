@@ -1,0 +1,29 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap down
+run 10
+tap 1
+run 400
+print dbg_cells_tot
+print game_frames
+run 300
+print dbg_cells_tot
+print game_frames
+print dbg_cells
+print dbg_cast
+print dbg_items
+print dbg_rw
+print dbg_isr_vc w1
+print dbg_lines_oc l
+print dbg_lines_dda l
+print game_frames
+print dbg_l1 l
+print dbg_l2 l
+print dbg_l3 l
+print dbg_cells_tot

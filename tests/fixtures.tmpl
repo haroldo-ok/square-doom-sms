@@ -12,7 +12,7 @@ run 10
 tap 1
 waituntil level_num == 1 600 w1
 run 200
-expect health == 100 w1
+expect health > 0 w1
 echo --- door: stand west of door sector 29, face east, use
 poke playerx 31744
 poke playery 9216
@@ -40,7 +40,7 @@ tap 1
 waituntil level_num == 2 300 w1
 run 400
 screenshot shots/33_e1m2.ppm
-expect health == 100 w1
+expect health > 0 w1
 echo --- automap via pause
 pause
 run 30

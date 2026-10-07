@@ -12,6 +12,7 @@ u8 level_num_enemies, level_num_items, level_num_secrets, level_par_time;
 u8 item_x[MAX_ITEMS], item_y[MAX_ITEMS], item_t[MAX_ITEMS];
 u8 n_items;
 u8 spawn_xya[3];
+u8 sw_mask[32];                 /* bit per sector: has a switch face (render fast path) */
 
 const u8 state_texture[] = {
   TEX_ANIMATE + 0, 2, 1, 2,
@@ -57,6 +58,8 @@ void load_level(void) {
   sw_n = s[3];
   for (i = 0; i < 8; i++) { sw_sec[i] = s[4 + i]; sw_dir[i] = s[12 + i]; }
   sector_max = s[20];
+  for (i = 0; i < 32; i++) sw_mask[i] = 0;
+  for (i = 0; i < sw_n && i < 8; i++) sw_mask[sw_sec[i] >> 3] |= 1 << (sw_sec[i] & 7);
   level_num_enemies = s[21]; level_num_items = s[22]; level_num_secrets = s[23]; level_par_time = s[24];
   n_items = 0;
   for (i = 0; i < 1024; i++) {

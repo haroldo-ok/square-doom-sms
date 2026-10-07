@@ -1,0 +1,65 @@
+symbols game.noi
+echo --- every weapon: idle and firing (Doom sprites)
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap 1
+waituntil level_num == 1 600 w1
+run 200
+pause
+run 30
+tap left
+run 3
+tap right
+run 3
+tap left
+run 3
+tap right
+run 3
+tap 2
+run 3
+tap 2
+run 3
+tap 1
+run 10
+pause
+run 60
+expect owned_weapons == 31 w1
+poke cur_weapon 0 w1
+run 120
+screenshot shots/90_fist.ppm
+hold 1
+run 14
+screenshot shots/91_fist_fire.ppm
+hold none
+run 60
+poke cur_weapon 1 w1
+run 120
+screenshot shots/92_saw.ppm
+hold 1
+run 30
+screenshot shots/93_saw_fire.ppm
+hold none
+run 60
+poke cur_weapon 5 w1
+run 120
+screenshot shots/94_rocket.ppm
+hold 1
+run 6
+screenshot shots/95_rocket_fire.ppm
+hold none
+run 120
+expect 0xC72C < 100 w1
+poke cur_weapon 3 w1
+run 120
+hold 1
+run 8
+screenshot shots/96_shotgun_fire.ppm
+run 40
+screenshot shots/97_shotgun_cock.ppm
+hold none
+run 60

@@ -19,6 +19,7 @@ static void wait_any_button(void) {
 }
 /* display off, clear the 0x3800 name table and the sprites */
 static void ui_begin(void) {
+  vdp_sync();
   SMS_displayOff();
   vdp_set_nt_front();
   SMS_VRAMmemsetW(0x3800, 0, 0x700);

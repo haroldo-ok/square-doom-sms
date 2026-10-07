@@ -1,0 +1,31 @@
+symbols game.noi
+run 60
+tap 1
+run 60
+tap 1
+run 30
+tap 1
+run 30
+tap 1
+waituntil level_num == 1 600 w1
+run 100
+echo --- idclev-style jump to E1M8, then finish it
+poke level_num 8 w1
+poke clev 1 w1
+poke end_level 1 w1
+waituntil level_num == 8 600 w1
+run 400
+screenshot shots/60_e1m8.ppm
+poke end_level 1 w1
+run 1000
+tap 1
+run 200
+run 200
+screenshot shots/61_ending.ppm
+tap 1
+run 100
+screenshot shots/62_ending2.ppm
+tap 1
+run 200
+screenshot shots/63_after.ppm
+expectvdp display 1

@@ -1,6 +1,7 @@
 /* Weapons: 50 Hz pose/fire state machine (weapon.asm update_weapon_irq),
  * shot resolution, and the HUD weapon overlay (BG tiles + edge sprites). */
 #include "defs.h"
+#include <string.h>
 
 u8 wpn_visible, wpn_shot_req, wpn_pose, wpn_flash_ticks, wpn_tiles_loaded = 0xff;
 volatile u8 key_fire_held;
@@ -150,39 +151,31 @@ u8 weapon_hl_colour(void) { return 0; }
  * into the bank the visible frame is not using. */
 u8 sat_n, sat_y[64], sat_xn[128];
 u8 wpn_shown_pose = 0xff, wpn_shown_bank;
-static u8 next_bank;
-static u16 vram_tile(u8 bank, u8 t) {
-  if (!bank) return 256 + t;
-  return t < 60 ? 324 + t : 440 + (t - 60);
-}
 void weapon_overlay(void) {
   const u8 *d;
   u8 nt, nb, ns, bank = SMS_getROMBank(), p, vb;
+  u16 sec;
   sat_n = 0;
   if (!(wpn_visible && health && cur_weapon <= 5)) return;
   p = wpose_first[cur_weapon] + pose_index();
   SMS_mapROMBank(wpose_bank[p]);
   d = (const u8 *)wpose_addr[p];
   nt = d[0]; nb = d[1]; ns = d[2];
+  sec = (u16)nb * 4 + ns * 3;                   /* one bank's section */
   if (p != wpn_shown_pose) {
-    const u8 *t = d + 3 + nb * 3 + ns * 3;
+    const u8 *tl = d + 3 + sec * 2;
+    vdp_sync();
     vb = wpn_shown_bank ^ 1;
-    if (!vb) SMS_loadTiles(t, 256, nt * 32);
-    else if (nt <= 60) SMS_loadTiles(t, 324, nt * 32);
-    else { SMS_loadTiles(t, 324, 60 * 32); SMS_loadTiles(t + 60 * 32, 440, (nt - 60) * 32); }
+    if (!vb) SMS_loadTiles(tl, 256, nt * 32);
+    else if (nt <= 60) SMS_loadTiles(tl, 324, nt * 32);
+    else { SMS_loadTiles(tl, 324, 60 * 32); SMS_loadTiles(tl + 60 * 32, 440, (nt - 60) * 32); }
   } else vb = wpn_shown_bank;
-  next_bank = vb;
   d += 3;
-  while (nb--) {
-    u16 cell = d[0] | (d[1] << 8);
-    fb[cell] = vram_tile(vb, d[2]) | TILE_USE_SPRITE_PALETTE;
-    d += 3;
-  }
-  {
-    u8 *py = sat_y, *pxn = sat_xn;
-    sat_n = ns;
-    while (ns--) { *pxn++ = d[0]; *py++ = d[1]; *pxn++ = (u8)(vram_tile(vb, d[2]) - 256); d += 3; }
-  }
+  if (vb) d += sec;
+  if (ns) vdp_sync();                            /* sat_* is read by the pending flip */
+  { extern const u8 *wov_src; extern u8 wov_n, wov_ns; void wov_copy(void);
+    wov_src = d; wov_n = nb; wov_ns = ns; wov_copy(); }
+  sat_n = ns;
   SMS_mapROMBank(bank);
   wpn_shown_pose = p;     /* committed when this frame is presented */
   wpn_shown_bank = vb;

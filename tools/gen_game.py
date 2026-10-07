@@ -50,13 +50,16 @@ r2 = [set_for(1024, i * 64 + 32) for i in range(256)]             # P >= 2048, i
 assert len(set_list) <= 256, len(set_list)
 data = []; offs = []; lens = []
 for v in set_list: offs.append(len(data)); lens.append(len(v)); data += list(v)
-arr('rtab1', r1); arr('rtab2', r2)
-arr('rset_off', offs, 'unsigned int'); arr('rset_len', lens); arr('rset_data', data)
+pass  # row sets now live in the per-level cast banks
+RSET = (r1, r2, offs, lens)
+set_list_saved = set_list
 print('row sets', len(set_list), 'bytes', len(data))
 arr('qsq', [(i * i) // 4 for i in range(512)], 'unsigned int')
+arr('recip_tab', [65535] + [min(65535, round(65536 / w)) for w in range(1, 128)], 'unsigned int')
 # wall distance lighting: dither steps added for a wall P (8.8 tiles) away, index P>>4.
 # Roughly linear like Doom's diminishing light, levelling off before full black.
-arr('lightfall', [min(13, round((i / 16) * 1.25)) for i in range(256)])
+LIGHTFALL = [min(13, round((i / 16) * 1.25)) for i in range(256)]
+
 COL_ANGLE = (2 * HALF_FOV / COLS) * (2 * math.pi / 256)
 spr = []
 for i in range(256):
@@ -136,6 +139,14 @@ H('#define T_KEY_RED %d' % (FONT0 + 50))
 H('#define T_KEY_YELLOW %d' % (FONT0 + 51))
 H('#define T_KEY_BLUE %d' % (FONT0 + 52))
 H('#define T_ARROW %d' % (FONT0 + 53))
+ct = []
+for ch in range(32, 96):
+    c = chr(ch)
+    if 'A' <= c <= 'Z': ct.append(FONT0 + ord(c) - 65)
+    elif '0' <= c <= '9': ct.append(FONT0 + 26 + ord(c) - 48)
+    elif c in PUNCT: ct.append(FONT0 + 36 + PUNCT.index(c))
+    else: ct.append(0)
+arr('char_tiles', ct)
 # colour -> fb entry tables
 def entry(k, s, p, kind):
     if k > 6 and kind != 'solid':  # fall back to nearest dithered colour
@@ -153,6 +164,16 @@ for c in range(16):
     wallb.append(entry(k, s, 0, 'wall')); floorb.append(entry(k, s, 0, 'floor'))
     k, s = PAIR[c]; solid.append(entry(k, s, 0, 'solid'))
 arr('wall_entry', wallb, 'unsigned int'); arr('floor_entry', floorb, 'unsigned int')
+floor_entry_tab = floorb
+# flat entries by colour and sector light: flat_tab[colour * 32 + bright] (pattern 15 = black)
+ft = []
+for c in range(16):
+    for b in range(16):
+        pat = 15 - b
+        ft.append(0 if (pat >= 15 or c == 0) else floor_entry_tab[c] + pat)
+    ft.append(floor_entry_tab[c] if c else 0)      # bright 16 = full bright
+    ft += [0] * 15
+arr('flat_tab', ft, 'unsigned int')
 arr('solid_entry', solid, 'unsigned int')
 
 # ------------------------------------------------------------------ banks
@@ -162,7 +183,7 @@ for k, v in (('BANK_FRONT', BANK_FRONT), ('BANK_WPN0', BANK_WPN0), ('BANK_SPLASH
     H('#define %s %d' % (k, v))
 H('#define LOGIC_CODE_ADDR 0x8400')
 # weapon banks: game tileset + weapon tiles + pose data
-wb = {BANK_WPN0 + i: bytearray() for i in range(4)}
+wb = {b: bytearray() for b in [3, 4, 5, 6] + list(range(32, 40))}
 def wadd(name, data):
     b = next(b for b in sorted(wb) if len(wb[b]) + len(data) <= 16384)
     off = len(wb[b]); wb[b] += data
@@ -179,8 +200,15 @@ for wi, (name, poses) in enumerate(DW.WEAPONS):
     for spr_name, flashes in poses:
         tiles_p, bgl, spl = DW.build_pose(DW.compose(spr_name, flashes))
         rec = [len(tiles_p), len(bgl), len(spl)]
-        for cell, t in bgl: rec += [cell & 255, cell >> 8, t]
-        for x, y, t in spl: rec += [x & 255, (y - 1) & 255, t]
+        def vram(bank, t):
+            if not bank: return 256 + t
+            return 324 + t if t < 60 else 440 + (t - 60)
+        for bank in (0, 1):      # final fb writes + sprite table bytes for each VRAM tile bank
+            for cell, t in bgl:
+                off = cell * 2; e = vram(bank, t) | 0x0800
+                rec += [off & 255, off >> 8, e & 255, e >> 8]
+            rec += [(y - 1) & 255 for x, y, t in spl]
+            for x, y, t in spl: rec += [x & 255, (vram(bank, t) - 256) & 255]
         recs.append(bytes(rec) + b''.join(tiles_p))
     blob_total = sum(len(r) for r in recs)
     # keep a weapon's poses in one bank
@@ -196,7 +224,7 @@ for n in WPOSE_N: pf.append(pf[-1] + n)
 arr('wpose_first', pf)
 H('#define WPOSE_BANK_TILES %d' % DW.BANK_TILES)
 arr('game_sprpal_doom', [r | (g << 2) | (b << 4) for r, g, b in [DW.SPRPAL.get(i, (0, 0, 0)) for i in range(16)]])
-banks.update(wb)
+banks.update({b: v for b, v in wb.items() if len(v)})
 print('weapon banks', [len(v) for v in wb.values()])
 
 # ------------------------------------------------------------------ render banks: [map 1K][textures][tables]
@@ -223,6 +251,15 @@ sw, _ = acme.parse('wall_switch.asm'); radd('SWITCH_ADDR', bytes(sw['wall_switch
 def u16s(a): return b''.join(bytes([v & 255, v >> 8]) for v in a)
 radd('DDX_ADDR', u16s(ddx)); radd('DDY_ADDR', u16s(ddy))
 radd('RZ_ADDR', u16s([0] + [round(8192 / z) for z in range(1, 256)]))
+# per-crossing info: row set offset (into rset_data), row set length, wall falloff
+r1, r2, offs, lens = RSET
+ri = bytearray()
+for i in range(256):
+    P = i * 8 + 4; s_ = r1[i]
+    ri += bytes([offs[s_] & 255, offs[s_] >> 8, lens[s_], LIGHTFALL[min(255, P >> 4)]])
+for j in range(256):
+    P = j * 64 + 32; s_ = r2[j]
+    ri += bytes([offs[s_] & 255, offs[s_] >> 8, lens[s_], LIGHTFALL[min(255, P >> 4)]])
 arr('enemy_mip_addr', emip, 'unsigned int'); arr('item_mip_addr', imip, 'unsigned int')
 arr('enemy_mip_w', [16, 8, 4, 2, 1]); arr('enemy_mip_h', [32, 16, 8, 4, 2])
 arr('item_mip_w', [8, 4, 2, 1])
@@ -231,6 +268,61 @@ assert len(tex) <= 16384
 levels = [open(SRC + 'levels/e1m%d.bin' % n, 'rb').read() for n in range(1, 10)]
 for n in range(9):
     banks[BANK_RENDER0 + n] = bytes(levels[n][:1024]) + bytes(tex[1024:])
+# ------------------------------------------------------------------ ray banks
+# per player angle: the 32 columns' perpendicular DDA steps (fish-corrected), as
+# rebuild_col_rays used to compute them: max(1, (fish * dd) >> 8)
+BANK_RAYS0 = 49
+H('#define BANK_RAYS0 %d' % BANK_RAYS0)
+rays = bytearray()
+for pa in range(256):
+    xs = []; ys = []
+    for c in range(COLS):
+        a = (pa + colang[c]) & 255
+        xs.append(max(1, (fish[c] * ddx[a]) >> 8)); ys.append(max(1, (fish[c] * ddy[a]) >> 8))
+    sx = bytes([1 if sins[(pa + colang[c]) & 255] < 128 and sins[(pa + colang[c]) & 255] > 0 else 255 for c in range(COLS)])
+    cy = [((sins + sins[:64])[((pa + colang[c]) & 255) + 64]) for c in range(COLS)]
+    sy = bytes([255 if (v < 128 and v > 0) else 1 for v in cy])
+    rays += u16s(xs) + u16s(ys) + sx + sy + bytes(64)        # 256 bytes per angle
+for i in range(4): banks[BANK_RAYS0 + i] = bytes(rays[i * 16384:(i + 1) * 16384])
+# ------------------------------------------------------------------ cast banks (one per level)
+# [map 1K][rinfo 512 x 4][row table: per row set, 75 clamped rows for dh = -40..34]
+# [sky][switch texture][ddx/ddy]: everything the column caster reads, in one bank.
+BANK_CAST0 = 40
+H('#define BANK_CAST0 %d' % BANK_CAST0)
+H('#define CAST_BANK (BANK_CAST0 + level_num - 1)')
+r1, r2, offs, lens = RSET
+cb = bytearray(1024)
+RI_OFF = len(cb); cb += bytes(512 * 4)
+T_OFF = len(cb)
+set_base = []
+DH0, DHN = 40, 75
+for v in set_list:
+    set_base.append(0x8000 + len(cb) + DH0)
+    for k in range(DHN):
+        dh = k - DH0
+        a = abs(dh)
+        n = 0 if a == 0 else (v[a] if a < len(v) else (13 if len(v) < 32 else v[31]))
+        row = 12 - n if dh > 0 else 12 + n
+        cb.append(max(0, min(24, row)))
+ri = bytearray()
+for i in range(256):
+    P = i * 8 + 4; b = set_base[r1[i]]
+    ri += bytes([b & 255, b >> 8, min(255, P >> 4), LIGHTFALL[min(255, P >> 4)]])
+for j in range(256):
+    P = j * 64 + 32; b = set_base[r2[j]]
+    ri += bytes([b & 255, b >> 8, min(255, P >> 4), LIGHTFALL[min(255, P >> 4)]])
+cb[RI_OFF:RI_OFF + len(ri)] = ri
+def cadd(name, data):
+    global cb
+    H('#define %s 0x%04X' % (name, 0x8000 + len(cb))); cb += data
+cadd('CAST_SKY', bytes(sky['sky_cols']))
+cadd('CAST_SWITCH', bytes(sw['wall_switch_tex']))
+cadd('CAST_DDX', u16s(ddx)); cadd('CAST_DDY', u16s(ddy))
+print('cast bank bytes', len(cb))
+assert len(cb) <= 16384
+for n in range(9):
+    banks[BANK_CAST0 + n] = bytes(levels[n][:1024]) + bytes(cb[1024:])
+open(GEN + 'rinfo.inc', 'w').write('        RINFO_ADDR = 0x%04X\n' % (0x8000 + RI_OFF))
 # level init data (everything after the map) lives at the end of each logic bank
 INIT_SZ = 3473 - 1024
 INIT_ADDR = 0xC000 - INIT_SZ

@@ -23,6 +23,7 @@ static u8 sat_add(u8 a, u8 b) { u16 v = a + b; return v > 255 ? 255 : (u8)v; }
 /* frame interrupt: timing, pad sampling (C64 CIA Timer A input_irq), weapons, sound */
 static void frame_isr(void) {
   u8 ms, p, dir;
+  vdp_isr_flip();
   if (pal_mode) ms = 20;
   else { ms = ms_phase == 2 ? 16 : 17; if (++ms_phase == 3) ms_phase = 0; }
   vbl_count++;
@@ -53,16 +54,15 @@ static void frame_isr(void) {
   sound_isr();
 }
 
-void wait_frames(u8 n) { while (n--) SMS_waitForVBlank(); }
+void wait_frames(u8 n) { while (n--) SMS_waitForVBlank(); vdp_sync(); }
 void set_border(u8 i) { border_idx = i; }
 
 void present_frame(u8 with_sprites) {
+  vdp_sync();
   vdp_upload_fb();
-  SMS_waitForVBlank();
-  vdp_flip();
-  if (with_sprites) vdp_upload_sat();
-  SMS_setSpritePaletteColor(14, c64_sms[border_idx]);
-  SMS_setBackdropColor(14);
+  flip_sat = with_sprites;
+  flip_border = c64_sms[border_idx];
+  flip_pending = 1;
 }
 
 static void detect_region(void) {
